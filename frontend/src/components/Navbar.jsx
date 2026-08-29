@@ -13,6 +13,7 @@ function Navbar({ darkMode, setDarkMode }) {
 
   const { profile, isAuthenticated, setIsAuthenticated } = useAuth();
   const navigateTo = useNavigate();
+  const currentUser = profile?.user || profile;
 
   const handleLogout = async (e) => {
     e.preventDefault();
@@ -80,7 +81,7 @@ function Navbar({ darkMode, setDarkMode }) {
             </button>
 
             {/* Dashboard/Logout */}
-            {isAuthenticated && profile?.user?.role === "admin" ? (
+            {isAuthenticated && currentUser?.role === "admin" ? (
               <Link
                 to="/dashboard"
                 className="bg-blue-600 text-white font-semibold hover:bg-blue-800 duration-300 px-4 py-2 rounded"
@@ -146,7 +147,7 @@ function Navbar({ darkMode, setDarkMode }) {
                 CONTACT
               </Link>
               
-              {isAuthenticated && profile?.user?.role === "admin" ? (
+              {isAuthenticated && currentUser?.role === "admin" ? (
               <Link
                 to="/dashboard"
                 className="hover:text-blue-500"

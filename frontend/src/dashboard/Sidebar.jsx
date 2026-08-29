@@ -7,15 +7,13 @@ import { BiSolidLeftArrowAlt } from "react-icons/bi";
 import toast from "react-hot-toast";
 import { BACKEND_URL } from "../../utils";
 
-function Sidebar({ setComponent }) {
-  const { profile} = useAuth();
-  console.log(profile.user);
+function Sidebar({ setComponent, show, setShow }) {
+  const { profile } = useAuth();
   const { setIsAuthenticated } = useAuth();
   const navigateTo = useNavigate();
 
-  const [show, setShow] = useState(false);
-
   const handleComponents = (value) => {
+    setShow(false);
     setComponent(value);
   };
   const gotoHome = () => {
@@ -45,32 +43,44 @@ function Sidebar({ setComponent }) {
 
   return (
     <>
-      <div
-        className="sm:hidden fixed top-4 left-4 z-50"
-        onClick={() => setShow(!show)}
-      >
-        <CiMenuBurger className="text-2xl" />
-      </div>
-      <div
-        className={`w-64 h-full shadow-lg fixed top-0 left-0 bg-gray-50 transition-transform duration-300 transform sm:translate-x-0 ${
+      {!show && (
+        <button
+          onClick={() => setShow(true)}
+          className="fixed left-4 top-4 z-50 flex items-center gap-2 rounded-full bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-700"
+        >
+          <CiMenuBurger className="text-xl" />
+          Menu
+        </button>
+      )}
+
+      <aside
+        className={`fixed left-0 top-0 z-40 h-full w-64 bg-gray-50 shadow-lg transition-transform duration-300 ease-in-out ${
           show ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div
-          className="sm:hidden absolute top-4 right-4 text-xl cursor-pointer"
-          onClick={() => setShow(!show)}
-        >
-          <BiSolidLeftArrowAlt className="text-2xl" />
+        <div className="flex items-center justify-between px-4 pt-4">
+          <div className="text-xl font-bold text-gray-800">Menu</div>
+          <button
+            onClick={() => setShow(false)}
+            className="rounded-full p-2 text-gray-700 hover:bg-gray-200"
+            aria-label="Hide sidebar"
+          >
+            <BiSolidLeftArrowAlt className="text-2xl" />
+          </button>
         </div>
-        <div className="text-center">
+
+        <div className="mt-4 text-center">
           <img
-            className="w-24 h-24 rounded-full mx-auto mb-2"
-            src={profile?.user?.photo?.url}
-            alt=""
+            className="w-24 h-24 rounded-full mx-auto mb-2 object-cover"
+            src={profile?.user?.photo?.url || profile?.photo?.url}
+            alt="user avatar"
           />
-          <p className="text-lg font-semibold">{profile?.user?.name}</p>
+          <p className="text-lg font-semibold text-gray-800">
+            {profile?.user?.name || profile?.name}
+          </p>
         </div>
-        <ul className="space-y-6 mx-4">
+
+        <ul className="mt-8 space-y-4 px-4">
           <button
             onClick={() => handleComponents("My Blogs")}
             className="w-full px-4 py-2 bg-green-500 rounded-lg hover:bg-green-700 transition duration-300"
@@ -102,7 +112,7 @@ function Sidebar({ setComponent }) {
             LOGOUT
           </button>
         </ul>
-      </div>
+      </aside>
     </>
   );
 }

@@ -9,16 +9,22 @@ import { Navigate } from "react-router-dom";
 function Dashboard() {
   const { profile, isAuthenticated } = useAuth();
   const [component, setComponent] = useState("My Blogs");
-  console.log(profile);
-  console.log(isAuthenticated);
+  const [showSidebar, setShowSidebar] = useState(true);
 
   if (!isAuthenticated) {
     return <Navigate to={"/"} />;
   }
+
   return (
-    <div>
-      <div>
-        <Sidebar component={component} setComponent={setComponent} />
+    <div className="min-h-screen bg-gray-100">
+      <Sidebar
+        component={component}
+        setComponent={setComponent}
+        show={showSidebar}
+        setShow={setShowSidebar}
+      />
+
+      <div className={`${showSidebar ? "ml-64" : "ml-0"} transition-all duration-300`}>
         {component === "My Profile" ? (
           <MyProfile />
         ) : component === "Create Blog" ? (
