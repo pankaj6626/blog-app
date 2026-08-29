@@ -8,25 +8,11 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { BACKEND_URL } from "../../utils";
 
-function Navbar() {
+function Navbar({ darkMode, setDarkMode }) {
   const [show, setShow] = useState(false);
-  const [darkMode, setDarkMode] = useState(
-    localStorage.getItem("theme") === "dark"
-  );
 
   const { profile, isAuthenticated, setIsAuthenticated } = useAuth();
   const navigateTo = useNavigate();
-
-  useEffect(() => {
-    // Apply the theme based on state
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [darkMode]);
 
   const handleLogout = async (e) => {
     e.preventDefault();

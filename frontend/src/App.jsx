@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Navbar from "../src/components/Navbar";
 import Home from "../src/components/Home";
 import Footer from "../src/components/Footer";
@@ -14,20 +14,32 @@ import { useAuth } from "./context/AuthProvider";
 import { Toaster } from "react-hot-toast";
 import UpdateBlog from "./dashboard/UpdateBlog";
 import Detail from "./pages/Detail";
-//import NotFound from "./pages/NotFound";
+
 function App() {
   const location = useLocation();
   const hideNavbarFooter = ["/dashboard", "/login", "/register"].includes(
     location.pathname
   );
   const { blogs, isAuthenticated } = useAuth();
-  let token = localStorage.getItem("jwt"); // Retrieve the token directly from the localStorage to maininting the routes protect (Go to login.jsx)
-  console.log(blogs);
-  console.log(isAuthenticated); // it is not using because every page refresh it was redirected to /login
+  const [darkMode, setDarkMode] = useState(
+    localStorage.getItem("theme") === "dark"
+  );
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [darkMode]);
+
+  let token = localStorage.getItem("jwt");
 
   return (
-    <div>
-      {!hideNavbarFooter && <Navbar />}
+    <div className="min-h-screen bg-white text-slate-900 transition-colors duration-200 dark:bg-slate-900 dark:text-white">
+      {!hideNavbarFooter && <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />}
       <Routes>
         <Route
           exact
@@ -41,15 +53,8 @@ function App() {
         <Route exact path="/login" element={<Login />} />
         <Route exact path="/register" element={<Register />} />
         <Route exact path="/dashboard" element={<Dashboard />} />
-
-        {/* Single page route */}
         <Route exact path="/blog/:id" element={<Detail />} />
-
-        {/* Update page route */}
         <Route exact path="/blog/update/:id" element={<UpdateBlog />} />
-
-        {/* Universal route */}
-        
       </Routes>
       <Toaster />
       {!hideNavbarFooter && <Footer />}
