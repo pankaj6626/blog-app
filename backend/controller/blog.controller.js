@@ -1,6 +1,12 @@
 import mongoose, { mongo } from "mongoose";
 import { Blog } from "../models/blog.model.js";
 import { v2 as cloudinary } from "cloudinary";
+import {
+  getCachedData,
+  invalidateBlogCache,
+  setCachedData,
+} from "../redisClient.js";
+
 export const createBlog = async (req, res) => {
   try {
     if (!req.files || Object.keys(req.files).length === 0) {
@@ -42,6 +48,7 @@ export const createBlog = async (req, res) => {
       },
     };
     const blog = await Blog.create(blogData);
+    await invalidateBlogCache();
 
     res.status(201).json({
       message: "Blog created successfully",
@@ -60,11 +67,20 @@ export const deleteBlog = async (req, res) => {
     return res.status(404).json({ message: "Blog not found" });
   }
   await blog.deleteOne();
+  await invalidateBlogCache(id);
   res.status(200).json({ message: "Blog deleted successfully" });
 };
 
 export const getAllBlogs = async (req, res) => {
-  const allBlogs = await Blog.find();
+  const cacheKey = "blogs:all";
+  const cachedBlogs = await getCachedData(cacheKey);
+
+  if (cachedBlogs) {
+    return res.status(200).json(cachedBlogs);
+  }
+
+  const allBlogs = await Blog.find().sort({ createdAt: -1 });
+  await setCachedData(cacheKey, allBlogs, 300);
   res.status(200).json(allBlogs);
 };
 
@@ -73,10 +89,20 @@ export const getSingleBlogs = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: "Invalid Blog id" });
   }
+
+  const cacheKey = `blogs:single:${id}`;
+  const cachedBlog = await getCachedData(cacheKey);
+
+  if (cachedBlog) {
+    return res.status(200).json(cachedBlog);
+  }
+
   const blog = await Blog.findById(id);
   if (!blog) {
     return res.status(404).json({ message: "Blog not found" });
   }
+
+  await setCachedData(cacheKey, blog.toObject(), 300);
   res.status(200).json(blog);
 };
 
@@ -95,5 +121,85 @@ export const updateBlog = async (req, res) => {
   if (!updatedBlog) {
     return res.status(404).json({ message: "Blog not found" });
   }
+  await invalidateBlogCache(id);
   res.status(200).json(updatedBlog);
+};
+
+export const addComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid Blog id" });
+    }
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({ message: "Comment text is required" });
+    }
+
+    const blog = await Blog.findById(id);
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+
+    blog.comments.push({
+      user: req.user._id,
+      name: req.user.name,
+      photo: req.user.photo?.url || "",
+      text: text.trim(),
+    });
+
+    await blog.save();
+    await invalidateBlogCache(id);
+
+    res.status(201).json({
+      message: "Comment added successfully",
+      comments: blog.comments,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Internal Server error" });
+  }
+};
+
+export const deleteComment = async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid Blog id" });
+    }
+
+    const blog = await Blog.findById(id);
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+
+    const comment = blog.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    const isOwner = comment.user.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        message: "You are not allowed to delete this comment",
+      });
+    }
+
+    blog.comments.pull(commentId);
+    await blog.save();
+    await invalidateBlogCache(id);
+
+    res.status(200).json({
+      message: "Comment deleted successfully",
+      comments: blog.comments,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Internal Server error" });
+  }
 };
