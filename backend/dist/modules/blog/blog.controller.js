@@ -1,0 +1,170 @@
+import mongoose from "mongoose";
+import { Blog } from "./blog.schema.js";
+import { v2 as cloudinary } from "cloudinary";
+import { getCachedData, invalidateBlogCache, setCachedData } from "../../config/redis.js";
+export const createBlog = async (req, res) => {
+    try {
+        if (!req.files || Object.keys(req.files).length === 0) {
+            return res.status(400).json({ message: "Blog Image is required" });
+        }
+        const { blogImage } = req.files;
+        const allowedFormats = ["image/jpeg", "image/png", "image/webp"];
+        if (!allowedFormats.includes(blogImage.mimetype)) {
+            return res.status(400).json({
+                message: "Invalid photo format. Only jpg and png are allowed",
+            });
+        }
+        const { title, category, about } = req.body;
+        if (!title || !category || !about) {
+            return res.status(400).json({
+                message: "title, category & about are required fields",
+            });
+        }
+        const adminName = req?.user?.name;
+        const adminPhoto = req?.user?.photo?.url;
+        const createdBy = req?.user?._id;
+        const cloudinaryResponse = await cloudinary.uploader.upload(blogImage.tempFilePath);
+        if (!cloudinaryResponse || cloudinaryResponse.error) {
+            console.log(cloudinaryResponse.error);
+        }
+        const blog = await Blog.create({
+            title,
+            about,
+            category,
+            adminName,
+            adminPhoto,
+            createdBy,
+            blogImage: {
+                public_id: cloudinaryResponse.public_id,
+                url: cloudinaryResponse.url,
+            },
+        });
+        await invalidateBlogCache();
+        return res.status(201).json({ message: "Blog created successfully", blog });
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Internal Server error" });
+    }
+};
+export const deleteBlog = async (req, res) => {
+    const id = typeof req.params.id === "string" ? req.params.id : "";
+    const blog = await Blog.findById(id);
+    if (!blog) {
+        return res.status(404).json({ message: "Blog not found" });
+    }
+    await blog.deleteOne();
+    await invalidateBlogCache(id);
+    return res.status(200).json({ message: "Blog deleted successfully" });
+};
+export const getAllBlogs = async (_req, res) => {
+    const cacheKey = "blogs:all";
+    const cachedBlogs = await getCachedData(cacheKey);
+    if (cachedBlogs) {
+        return res.status(200).json(cachedBlogs);
+    }
+    const allBlogs = await Blog.find().sort({ createdAt: -1 });
+    await setCachedData(cacheKey, allBlogs, 300);
+    return res.status(200).json(allBlogs);
+};
+export const getSingleBlog = async (req, res) => {
+    const id = typeof req.params.id === "string" ? req.params.id : "";
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: "Invalid Blog id" });
+    }
+    const cacheKey = `blogs:single:${id}`;
+    const cachedBlog = await getCachedData(cacheKey);
+    if (cachedBlog) {
+        return res.status(200).json(cachedBlog);
+    }
+    const blog = await Blog.findById(id);
+    if (!blog) {
+        return res.status(404).json({ message: "Blog not found" });
+    }
+    await setCachedData(cacheKey, blog.toObject(), 300);
+    return res.status(200).json(blog);
+};
+export const getMyBlogs = async (req, res) => {
+    const createdBy = req.user._id;
+    const myBlogs = await Blog.find({ createdBy });
+    return res.status(200).json(myBlogs);
+};
+export const updateBlog = async (req, res) => {
+    const id = typeof req.params.id === "string" ? req.params.id : "";
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: "Invalid Blog id" });
+    }
+    const updatedBlog = await Blog.findByIdAndUpdate(id, req.body, { new: true });
+    if (!updatedBlog) {
+        return res.status(404).json({ message: "Blog not found" });
+    }
+    await invalidateBlogCache(id);
+    return res.status(200).json(updatedBlog);
+};
+export const addComment = async (req, res) => {
+    try {
+        const id = typeof req.params.id === "string" ? req.params.id : "";
+        const { text } = req.body;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid Blog id" });
+        }
+        if (!text || !text.trim()) {
+            return res.status(400).json({ message: "Comment text is required" });
+        }
+        const blog = await Blog.findById(id);
+        if (!blog) {
+            return res.status(404).json({ message: "Blog not found" });
+        }
+        blog.comments.push({
+            user: req.user._id,
+            name: req.user.name,
+            photo: req.user.photo?.url || "",
+            text: text.trim(),
+        });
+        await blog.save();
+        await invalidateBlogCache(id);
+        return res.status(201).json({
+            message: "Comment added successfully",
+            comments: blog.comments,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Internal Server error" });
+    }
+};
+export const deleteComment = async (req, res) => {
+    try {
+        const id = typeof req.params.id === "string" ? req.params.id : "";
+        const commentId = typeof req.params.commentId === "string" ? req.params.commentId : "";
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid Blog id" });
+        }
+        const blog = await Blog.findById(id);
+        if (!blog) {
+            return res.status(404).json({ message: "Blog not found" });
+        }
+        const comment = blog.comments.id(commentId);
+        if (!comment) {
+            return res.status(404).json({ message: "Comment not found" });
+        }
+        const isOwner = comment.user.toString() === req.user._id.toString();
+        const isAdmin = req.user.role === "admin";
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({
+                message: "You are not allowed to delete this comment",
+            });
+        }
+        blog.comments.pull(commentId);
+        await blog.save();
+        await invalidateBlogCache(id);
+        return res.status(200).json({
+            message: "Comment deleted successfully",
+            comments: blog.comments,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Internal Server error" });
+    }
+};
