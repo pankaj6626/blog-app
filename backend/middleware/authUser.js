@@ -4,11 +4,19 @@ import jwt from "jsonwebtoken";
 //Authentication
 export const isAuthenticated = async (req, res, next) => {
   try {
-    const token = req.cookies.jwt;
+    const tokenFromCookie = req.cookies?.jwt;
+    const authHeader = req.headers.authorization;
+    const token =
+      tokenFromCookie ||
+      (authHeader && authHeader.startsWith("Bearer ")
+        ? authHeader.split(" ")[1]
+        : null);
+
     console.log("Middleware : ", token);
     if (!token) {
       return res.status(401).json({ error: "User not authenticated" });
     }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
     const user = await User.findById(decoded.userId);
     if (!user) {

@@ -5,6 +5,7 @@ import axios from "axios";
 import { CiMenuBurger } from "react-icons/ci";
 import { BiSolidLeftArrowAlt } from "react-icons/bi";
 import toast from "react-hot-toast";
+import { BACKEND_URL } from "../../utils";
 
 function Sidebar({ setComponent }) {
   const { profile} = useAuth();
@@ -25,7 +26,7 @@ function Sidebar({ setComponent }) {
     e.preventDefault();
     try {
       const { data } = await axios.get(
-        "https://blog-app-9ifo.onrender.com/api/users/logout",
+        `${BACKEND_URL}/api/users/logout`,
         { withCredentials: true }
       );
        toast.success(data.message);

@@ -6,6 +6,7 @@ import { BsSun, BsMoon } from "react-icons/bs"; // Icons for light/dark mode
 import { useAuth } from "../context/AuthProvider";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { BACKEND_URL } from "../../utils";
 
 function Navbar() {
   const [show, setShow] = useState(false);
@@ -30,10 +31,13 @@ function Navbar() {
   const handleLogout = async (e) => {
     e.preventDefault();
     try {
-      const { data } = await axios.get(
-        "https://blog-app-9ifo.onrender.com/api/users/logout",
-        { withCredentials: true }
-      );
+      const token = localStorage.getItem("jwt");
+      const { data } = await axios.get(`${BACKEND_URL}/api/users/logout`, {
+        withCredentials: true,
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
       localStorage.removeItem("jwt");
       toast.success(data.message);
       setIsAuthenticated(false);

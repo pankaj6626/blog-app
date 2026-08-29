@@ -1,5 +1,6 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
+import { BACKEND_URL } from "../../utils";
 
 function Creators() {
   const [creators, setCreators] = useState([]);
@@ -8,7 +9,7 @@ function Creators() {
     const fetchCreators = async () => {
       try {
         const { data } = await axios.get(
-          "https://blog-app-9ifo.onrender.com/api/users/admins",
+          `${BACKEND_URL}/api/users/admins`,
           {
             withCredentials: true,
           }

@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
+import { BACKEND_URL } from "../../utils";
 
 function Login() {
   const { isAuthenticated, setIsAuthenticated, setProfile } = useAuth();
@@ -17,7 +18,7 @@ function Login() {
 
     try {
       const { data } = await axios.post(
-        "https://blog-app-9ifo.onrender.com/api/users/login",
+        `${BACKEND_URL}/api/users/login`,
         { email, password, role },
         {
           withCredentials: true,
