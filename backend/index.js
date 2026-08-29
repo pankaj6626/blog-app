@@ -6,6 +6,7 @@ import { v2 as cloudinary } from "cloudinary";
 import cookieParser from "cookie-parser";
 import userRoute from "./routes/user.route.js";
 import blogRoute from "./routes/blog.route.js";
+import { connectRedis } from "./redisClient.js";
 
 import cors from "cors";
 const app = express();
@@ -68,6 +69,8 @@ try {
 } catch (error) {
   console.log(error);
 }
+
+connectRedis();
 
 // defining routes
 app.use("/api/users", userRoute);
