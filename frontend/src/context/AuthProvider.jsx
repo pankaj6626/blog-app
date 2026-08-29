@@ -5,45 +5,36 @@ import { BACKEND_URL } from "../../utils";
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [blogs, setBlogs] = useState();
+  const [blogs, setBlogs] = useState([]);
   const [profile, setProfile] = useState();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const fetchBlogs = async () => {
+    try {
+      const { data } = await axios.get(`${BACKEND_URL}/api/blogs/all-blogs`, {
+        withCredentials: true,
+      });
+      setBlogs(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.log(error);
+      setBlogs([]);
+    }
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-          // token should be let type variable because its value will change in every login. (in backend also)
-        //const token = Cookies.get("token"); // Retrieve the token directly from the localStorage (Go to login.jsx)
         let token = localStorage.getItem("jwt");
-        //const parsedToken = token ? JSON.parse(token):undefined;
-        console.log(token);
         if (token) {
-          const { data } = await axios.get(
-            `${BACKEND_URL}/api/users/my-profile`,
-            {
-              withCredentials: true,
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-          console.log(data);
+          const { data } = await axios.get(`${BACKEND_URL}/api/users/my-profile`, {
+            withCredentials: true,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
           setProfile(data);
           setIsAuthenticated(true);
         }
-     } catch (error) {
-        console.log(error);
-      }
-    };
-
-    const fetchBlogs = async () => {
-      try {
-        const { data } = await axios.get(
-          `${BACKEND_URL}/api/blogs/all-blogs`,
-          { withCredentials: true }
-        );
-        console.log(data);
-        setBlogs(data);
       } catch (error) {
         console.log(error);
       }
@@ -61,6 +52,7 @@ export const AuthProvider = ({ children }) => {
         setProfile,
         isAuthenticated,
         setIsAuthenticated,
+        refreshBlogs: fetchBlogs,
       }}
     >
       {children}

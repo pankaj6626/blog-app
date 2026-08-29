@@ -2,11 +2,13 @@ import axios from "axios";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { BACKEND_URL } from "../../utils";
+import { useAuth } from "../context/AuthProvider";
 
 function CreateBlog() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [about, setAbout] = useState("");
+  const { refreshBlogs } = useAuth();
 
   const [blogImage, setBlogImage] = useState("");
   const [blogImagePreview, setBlogImagePreview] = useState("");
@@ -42,7 +44,8 @@ function CreateBlog() {
         }
       );
       console.log(data);
-      toast.success(data.message || "User registered successfully");
+      await refreshBlogs();
+      toast.success(data.message || "Blog created successfully");
       setTitle("");
       setCategory("");
       setAbout("");
