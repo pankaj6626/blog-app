@@ -1,16 +1,21 @@
-import { createClient } from "redis";
+import { Redis } from "@upstash/redis";
 
-const redisClient = createClient({
-  url: process.env.REDIS_URL || "redis://localhost:6379",
-});
-
-redisClient.on("error", (err) => {
-  console.log("Redis client error:", err.message);
-});
+const redisClient =
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    ? new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      })
+    : null;
 
 export const connectRedis = async () => {
+  if (!redisClient) {
+    console.log("Redis not configured. Cache disabled.");
+    return;
+  }
+
   try {
-    await redisClient.connect();
+    await redisClient.ping();
     console.log("Redis connected successfully");
   } catch (error) {
     console.log("Redis is not available, continuing without cache:", error.message);
@@ -21,9 +26,9 @@ export const getRedisClient = () => redisClient;
 
 export const getCachedData = async (key) => {
   try {
-    if (!redisClient.isOpen) return null;
+    if (!redisClient) return null;
     const cachedValue = await redisClient.get(key);
-    return cachedValue ? JSON.parse(cachedValue) : null;
+    return cachedValue ? JSON.parse(String(cachedValue)) : null;
   } catch (error) {
     console.log("Redis GET error:", error.message);
     return null;
@@ -32,9 +37,9 @@ export const getCachedData = async (key) => {
 
 export const setCachedData = async (key, value, ttlInSeconds = 300) => {
   try {
-    if (!redisClient.isOpen) return;
+    if (!redisClient) return;
     await redisClient.set(key, JSON.stringify(value), {
-      EX: ttlInSeconds,
+      ex: ttlInSeconds,
     });
   } catch (error) {
     console.log("Redis SET error:", error.message);
@@ -43,17 +48,17 @@ export const setCachedData = async (key, value, ttlInSeconds = 300) => {
 
 export const invalidateBlogCache = async (id = null) => {
   try {
-    if (!redisClient.isOpen) return;
+    if (!redisClient) return;
 
     const keys = await redisClient.keys("blogs:*");
-    if (keys.length === 0) return;
+    if (!keys || keys.length === 0) return;
 
     if (id) {
       await redisClient.del(`blogs:all`, `blogs:single:${id}`);
       return;
     }
 
-    await redisClient.del(keys);
+    await redisClient.del(...keys);
   } catch (error) {
     console.log("Redis invalidation error:", error.message);
   }

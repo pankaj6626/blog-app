@@ -12,11 +12,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-          // token should be let type variable because its value will change in every login. (in backend also)
-        //const token = Cookies.get("token"); // Retrieve the token directly from the localStorage (Go to login.jsx)
         let token = localStorage.getItem("jwt");
-        //const parsedToken = token ? JSON.parse(token):undefined;
-        console.log(token);
         if (token) {
           const { data } = await axios.get(
             `${BACKEND_URL}/api/users/my-profile`,
@@ -24,15 +20,17 @@ export const AuthProvider = ({ children }) => {
               withCredentials: true,
               headers: {
                 "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
               },
             }
           );
-          console.log(data);
-          setProfile(data);
+          const user = data?.user || data;
+          setProfile(user);
           setIsAuthenticated(true);
         }
-     } catch (error) {
+      } catch (error) {
         console.log(error);
+        setIsAuthenticated(false);
       }
     };
 

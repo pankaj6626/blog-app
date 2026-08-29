@@ -1,5 +1,5 @@
+import "dotenv/config";
 import express from "express";
-import dotenv from "dotenv";
 import mongoose from "mongoose";
 import fileUpload from "express-fileupload";
 import { v2 as cloudinary } from "cloudinary";
@@ -10,7 +10,6 @@ import { connectRedis } from "./redisClient.js";
 
 import cors from "cors";
 const app = express();
-dotenv.config();
 
 const port = process.env.PORT;
 const MONOGO_URL = process.env.MONOG_URI;
